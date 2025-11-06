@@ -1,0 +1,114 @@
+#
+#   makefile for OSX using clang and fftw
+#
+# Modified for Apple Silicon (M1/M2) with Apple Clang and Homebrew
+#
+
+# Disable built-in rules
+.SUFFIXES:
+MAKEFLAGS += --no-builtin-rules
+
+DEL = rm
+
+# Homebrew paths for M1 Macs
+FFTW_DIR = /opt/homebrew/opt/fftw
+OMP_DIR = /opt/homebrew/opt/libomp
+
+# Use Apple's clang
+CC = clang++ -O2 -L$(FFTW_DIR)/lib -I$(FFTW_DIR)/include
+
+# Compiler for OpenMP programs
+CC_OMP = clang++ -O2 -L$(FFTW_DIR)/lib -I$(FFTW_DIR)/include -L$(OMP_DIR)/lib -I$(OMP_DIR)/include -Xpreprocessor -fopenmp -lomp
+
+# define libraries
+MYLIBS = slicelib.o floatTIFF.o cfpix.o ransubs.o
+LIBS = $(MYLIBS)
+WLIBS = slicelib.o floatTIFF.o cfpix.o ransubs.o -lfftw3f_threads -lfftw3f
+
+#
+#  entry point to build everything
+#
+.PHONY : all
+all:
+	$(MAKE) -f makefile.osx atompot
+	$(MAKE) -f makefile.osx autoslic
+	$(MAKE) -f makefile.osx autostem
+	$(MAKE) -f makefile.osx image
+	$(MAKE) -f makefile.osx incostem
+	$(MAKE) -f makefile.osx mulslice
+	$(MAKE) -f makefile.osx pdb2xyz
+	$(MAKE) -f makefile.osx probe
+	$(MAKE) -f makefile.osx stemslic
+	$(MAKE) -f makefile.osx sumpix
+
+#
+#  entry point to remove compiled files
+#
+.PHONY : remove
+remove:
+	$(DEL) atompot
+	$(DEL) autoslic
+	$(DEL) autostem
+	$(DEL) image
+	$(DEL) incostem
+	$(DEL) mulslice
+	$(DEL) pdb2xyz
+	$(DEL) probe
+	$(DEL) stemslic
+	$(DEL) sumpix
+	$(DEL) cfpix.o
+	$(DEL) slicelib.o
+	$(DEL) floatTIFF.o
+	$(DEL) ransubs.o
+	$(DEL) rfpix.o
+
+#
+#  main programs
+#
+atompot: atompot.cpp $(MYLIBS)
+	$(CC) -o atompot atompot.cpp $(WLIBS)
+
+autoslic: autoslic.cpp autosliccmd.cpp rfpix.o $(MYLIBS)
+	$(CC_OMP) -o autoslic autosliccmd.cpp autoslic.cpp probe.cpp rfpix.o $(WLIBS)
+
+autostem: autostem.cpp autostemcmd.cpp rfpix.o $(MYLIBS)
+	$(CC_OMP) -o autostem autostemcmd.cpp autostem.cpp rfpix.o $(WLIBS)
+
+image: image.cpp $(MYLIBS)
+	$(CC) -o image image.cpp $(WLIBS)
+
+incostem: incostem.cpp incostemcmd.cpp $(MYLIBS)
+	$(CC) -o incostem incostemcmd.cpp incostem.cpp probe.cpp $(WLIBS)
+
+mulslice: mulslice.cpp $(MYLIBS)
+	$(CC) -o mulslice mulslice.cpp $(WLIBS)
+
+pdb2xyz: pdb2xyz.cpp $(MYLIBS)
+	$(CC) -o pdb2xyz pdb2xyz.cpp $(WLIBS)
+
+probe: probe.cpp probecmd.cpp $(MYLIBS)
+	$(CC) -o probe probecmd.cpp probe.cpp $(WLIBS)
+
+stemslic: stemslic.cpp $(MYLIBS)
+	$(CC) -o stemslic stemslic.cpp $(WLIBS)
+
+sumpix: sumpix.cpp $(MYLIBS)
+	$(CC) -o sumpix sumpix.cpp $(WLIBS)
+
+#
+# define subroutine library
+#
+cfpix.o: cfpix.cpp
+	$(CC) -c cfpix.cpp
+
+slicelib.o: slicelib.cpp
+	$(CC) -c slicelib.cpp
+
+floatTIFF.o: floatTIFF.cpp
+	$(CC) -c floatTIFF.cpp
+
+ransubs.o: ransubs.cpp
+	$(CC) -c ransubs.cpp
+
+rfpix.o: rfpix.cpp
+	$(CC) -c rfpix.cpp
